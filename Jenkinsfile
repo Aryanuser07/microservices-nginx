@@ -2,7 +2,8 @@ pipeline {
     agent any
 
     environment {
-        COMPOSE_CMD = 'docker-compose'
+        DOCKER_USER = 'aryan0763'
+        DOCKER_PASS = credentials('dockerhub-pass')
     }
 
     stages {
@@ -16,7 +17,7 @@ pipeline {
         stage('Build Docker Images') {
             steps {
                 echo '🐳 Building Docker images...'
-                bat "${COMPOSE_CMD} build"
+                bat 'docker-compose build'
             }
         }
 
@@ -34,35 +35,25 @@ pipeline {
         stage('Deploy Containers') {
             steps {
                 echo '🚀 Deploying new containers...'
-                bat "${COMPOSE_CMD} up -d"
+                bat 'docker-compose up -d'
             }
         }
 
         stage('Push to DockerHub') {
             steps {
                 echo '📤 Pushing images to DockerHub...'
-                withCredentials([usernamePassword(credentialsId: 'dockerhub-creds', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                withCredentials([string(credentialsId: 'dockerhub-pass', variable: 'DOCKER_PASS')]) {
                     bat '''
                     docker login -u %DOCKER_USER% -p %DOCKER_PASS%
                     docker tag microservices-nginx-user-service %DOCKER_USER%/microservices-nginx-user-service:latest
                     docker tag microservices-nginx-product-service %DOCKER_USER%/microservices-nginx-product-service:latest
                     docker tag microservices-nginx-order-service %DOCKER_USER%/microservices-nginx-order-service:latest
-
                     docker push %DOCKER_USER%/microservices-nginx-user-service:latest
                     docker push %DOCKER_USER%/microservices-nginx-product-service:latest
                     docker push %DOCKER_USER%/microservices-nginx-order-service:latest
                     '''
                 }
             }
-        }
-    }
-
-    post {
-        success {
-            echo '✅ Deployment successful! All microservices are up and running.'
-        }
-        failure {
-            echo '❌ Deployment failed. Check logs for details.'
         }
     }
 }
