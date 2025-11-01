@@ -3,7 +3,7 @@ pipeline {
 
     environment {
         DOCKER_USER = 'aryan0763'
-        DOCKER_PASS = credentials('dockerhub-pass')
+        DOCKER_PASS = credentials('dockerhub-creds')
     }
 
     stages {
