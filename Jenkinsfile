@@ -2,46 +2,45 @@ pipeline {
     agent any
 
     environment {
-        PROJECT_DIR = 'microservices-nginx'
+        REPO = 'Aryanuser07/microservices-nginx'
     }
 
     stages {
         stage('Checkout Code') {
             steps {
                 echo '📦 Pulling latest code...'
-                checkout scm
+                git branch: 'main', url: "https://github.com/${REPO}.git"
             }
         }
 
         stage('Build Docker Images') {
             steps {
                 echo '🐳 Building Docker images...'
-                sh 'docker compose build'
+                bat 'docker-compose build'
             }
         }
 
         stage('Deploy Containers') {
             steps {
-                echo '🚀 Deploying all services...'
-                sh 'docker compose down --remove-orphans'
-                sh 'docker compose up -d'
+                echo '🚀 Starting containers...'
+                bat 'docker-compose up -d'
             }
         }
 
         stage('Verify Services') {
             steps {
-                echo '✅ Checking running containers...'
-                sh 'docker ps'
+                echo '🔍 Checking running containers...'
+                bat 'docker ps'
             }
         }
     }
 
     post {
         success {
-            echo '🎉 Deployment Successful!'
+            echo '✅ Deployment successful! All microservices are running.'
         }
         failure {
-            echo '❌ Deployment Failed. Check logs in Jenkins console.'
+            echo '❌ Deployment failed. Check Jenkins console output.'
         }
     }
 }
