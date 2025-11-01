@@ -20,16 +20,27 @@ pipeline {
             }
         }
 
+        stage('Clean Old Containers') {
+            steps {
+                echo '🧹 Cleaning old containers...'
+                bat '''
+                echo Stopping and removing existing containers if any...
+                docker-compose down --remove-orphans || exit 0
+                docker rm -f user-service order-service product-service 2>nul || exit 0
+                '''
+            }
+        }
+
         stage('Deploy Containers') {
             steps {
-                echo '🚀 Starting containers...'
+                echo '🚀 Deploying new containers...'
                 bat 'docker-compose up -d'
             }
         }
 
         stage('Verify Services') {
             steps {
-                echo '🔍 Checking running containers...'
+                echo '🔍 Verifying running containers...'
                 bat 'docker ps'
             }
         }
@@ -37,10 +48,10 @@ pipeline {
 
     post {
         success {
-            echo '✅ Deployment successful! All microservices are running.'
+            echo '✅ Deployment successful! All microservices are running and accessible via Nginx.'
         }
         failure {
-            echo '❌ Deployment failed. Check Jenkins console output.'
+            echo '❌ Deployment failed. Check Jenkins console output for details.'
         }
     }
 }
