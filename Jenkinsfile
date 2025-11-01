@@ -2,75 +2,65 @@ pipeline {
     agent any
 
     environment {
-        DOCKERHUB_USER = 'your_dockerhub_username'   // replace
-        PROJECT_NAME = 'microservices-nginx'
+        DOCKER_BUILDKIT = '1'
+        COMPOSE_DOCKER_CLI_BUILD = '1'
     }
 
     stages {
+
         stage('Checkout Code') {
             steps {
-                echo 'Fetching latest code from GitHub...'
-                checkout scm
+                echo '📦 Pulling latest code...'
+                git branch: 'main', url: 'https://github.com/Aryanuser07/microservices-nginx.git'
             }
         }
 
         stage('Build Docker Images') {
             steps {
-                echo 'Building Docker images for all services...'
+                echo '🐳 Building Docker images...'
                 bat 'docker-compose build'
             }
         }
 
-        stage('Run Containers') {
+        stage('Clean Old Containers') {
             steps {
-                echo 'Starting containers...'
-                bat 'docker-compose up -d'
-            }
-        }
-
-        stage('Verify Services') {
-            steps {
-                echo 'Verifying all microservices...'
+                echo '🧹 Cleaning old containers...'
                 bat '''
-                curl http://localhost/api/users/
-                curl http://localhost/api/products/
-                curl http://localhost/api/orders/
+                echo Stopping and removing existing containers if any...
+                docker-compose down --remove-orphans || exit 0
+                docker rm -f user-service order-service product-service nginx-reverse-proxy 2>nul || exit 0
                 '''
             }
         }
 
         stage('Push to DockerHub') {
             steps {
-                echo 'Pushing images to DockerHub...'
-                bat """
-                docker tag ${PROJECT_NAME}-user-service ${DOCKERHUB_USER}/${PROJECT_NAME}-user-service:latest
-                docker tag ${PROJECT_NAME}-product-service ${DOCKERHUB_USER}/${PROJECT_NAME}-product-service:latest
-                docker tag ${PROJECT_NAME}-order-service ${DOCKERHUB_USER}/${PROJECT_NAME}-order-service:latest
-
-                docker push ${DOCKERHUB_USER}/${PROJECT_NAME}-user-service:latest
-                docker push ${DOCKERHUB_USER}/${PROJECT_NAME}-product-service:latest
-                docker push ${DOCKERHUB_USER}/${PROJECT_NAME}-order-service:latest
-                """
+                echo '🚀 Deploying new containers...'
+                bat 'docker-compose up -d'
             }
         }
 
-        stage('Cleanup') {
+        // Optional: Add this stage later after verifying successful deploy
+        /*
+        stage('Verify Services') {
             steps {
-                echo 'Stopping containers...'
-                bat 'docker-compose down'
+                echo '🔍 Checking service health...'
+                bat '''
+                curl -s http://localhost/users
+                curl -s http://localhost/products
+                curl -s http://localhost/orders
+                '''
             }
         }
+        */
     }
 
     post {
-        always {
-            echo 'Pipeline finished!'
+        success {
+            echo '✅ Deployment successful! All microservices are up and running.'
         }
         failure {
-            echo '❌ Something went wrong.'
-        }
-        success {
-            echo '✅ Build successful.'
+            echo '❌ Deployment failed. Check Jenkins console output for details.'
         }
     }
 }
