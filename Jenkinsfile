@@ -2,64 +2,75 @@ pipeline {
     agent any
 
     environment {
-        DOCKER_BUILDKIT = '1'
-        COMPOSE_DOCKER_CLI_BUILD = '1'
+        DOCKERHUB_USER = 'your_dockerhub_username'   // 🔹 replace this
+        PROJECT_NAME = 'microservices-nginx'
     }
 
     stages {
         stage('Checkout Code') {
             steps {
-                echo '📦 Pulling latest code...'
-                git branch: 'main', url: 'https://github.com/Aryanuser07/microservices-nginx.git'
+                echo 'Fetching latest code from GitHub...'
+                checkout scm
             }
         }
 
         stage('Build Docker Images') {
             steps {
-                echo '🐳 Building Docker images...'
-                bat 'docker-compose build'
+                echo 'Building Docker images for all services...'
+                sh 'docker-compose build'
             }
         }
 
-        stage('Clean Old Containers') {
+        stage('Run Containers') {
             steps {
-                echo '🧹 Cleaning old containers...'
-                bat '''
-                echo Stopping and removing existing containers if any...
-                docker-compose down --remove-orphans || exit 0
-                docker rm -f user-service order-service product-service nginx-reverse-proxy 2>nul || exit 0
-                '''
+                echo 'Starting all services using docker-compose...'
+                sh 'docker-compose up -d'
             }
         }
 
-        stage('Deploy Containers') {
-            steps {
-                echo '🚀 Deploying new containers...'
-                bat 'docker-compose up -d'
-            }
-        }
-
-        // Optional: Add this stage later after verifying successful deploy
-        /*
         stage('Verify Services') {
             steps {
-                echo '🔍 Checking service health...'
-                bat '''
-                curl -s http://localhost/users
-                curl -s http://localhost/products
-                curl -s http://localhost/orders
+                echo 'Checking if all services are running properly...'
+                sh '''
+                echo "Testing User Service:" && curl -f http://localhost/api/users/ || exit 1
+                echo "Testing Product Service:" && curl -f http://localhost/api/products/ || exit 1
+                echo "Testing Order Service:" && curl -f http://localhost/api/orders/ || exit 1
                 '''
             }
         }
-        */
+
+        stage('Push to DockerHub') {
+            steps {
+                echo 'Pushing images to DockerHub...'
+                sh '''
+                docker tag ${PROJECT_NAME}-user-service ${DOCKERHUB_USER}/${PROJECT_NAME}-user-service:latest
+                docker tag ${PROJECT_NAME}-product-service ${DOCKERHUB_USER}/${PROJECT_NAME}-product-service:latest
+                docker tag ${PROJECT_NAME}-order-service ${DOCKERHUB_USER}/${PROJECT_NAME}-order-service:latest
+
+                docker push ${DOCKERHUB_USER}/${PROJECT_NAME}-user-service:latest
+                docker push ${DOCKERHUB_USER}/${PROJECT_NAME}-product-service:latest
+                docker push ${DOCKERHUB_USER}/${PROJECT_NAME}-order-service:latest
+                '''
+            }
+        }
+
+        stage('Cleanup') {
+            steps {
+                echo 'Stopping and removing containers...'
+                sh 'docker-compose down'
+            }
+        }
     }
 
     post {
-        success {
-            echo '✅ Deployment successful! All microservices are up and running.'
+        always {
+            echo 'Pipeline completed!'
         }
         failure {
-            echo '❌ Deployment failed. Check Jenkins console output for details.'
+            echo '❌ Something went wrong in the pipeline.'
+        }
+        success {
+            echo '✅ All stages completed successfully.'
         }
     }
 }
