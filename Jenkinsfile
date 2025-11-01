@@ -2,12 +2,10 @@ pipeline {
     agent any
 
     environment {
-        DOCKER_BUILDKIT = '1'
-        COMPOSE_DOCKER_CLI_BUILD = '1'
+        COMPOSE_CMD = 'docker-compose'
     }
 
     stages {
-
         stage('Checkout Code') {
             steps {
                 echo '📦 Pulling latest code...'
@@ -18,7 +16,7 @@ pipeline {
         stage('Build Docker Images') {
             steps {
                 echo '🐳 Building Docker images...'
-                bat 'docker-compose build'
+                bat "${COMPOSE_CMD} build"
             }
         }
 
@@ -33,26 +31,30 @@ pipeline {
             }
         }
 
-        stage('Push to DockerHub') {
+        stage('Deploy Containers') {
             steps {
                 echo '🚀 Deploying new containers...'
-                bat 'docker-compose up -d'
+                bat "${COMPOSE_CMD} up -d"
             }
         }
 
-        // Optional: Add this stage later after verifying successful deploy
-        /*
-        stage('Verify Services') {
+        stage('Push to DockerHub') {
             steps {
-                echo '🔍 Checking service health...'
-                bat '''
-                curl -s http://localhost/users
-                curl -s http://localhost/products
-                curl -s http://localhost/orders
-                '''
+                echo '📤 Pushing images to DockerHub...'
+                withCredentials([usernamePassword(credentialsId: 'dockerhub-creds', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                    bat '''
+                    docker login -u %DOCKER_USER% -p %DOCKER_PASS%
+                    docker tag microservices-nginx-user-service %DOCKER_USER%/microservices-nginx-user-service:latest
+                    docker tag microservices-nginx-product-service %DOCKER_USER%/microservices-nginx-product-service:latest
+                    docker tag microservices-nginx-order-service %DOCKER_USER%/microservices-nginx-order-service:latest
+
+                    docker push %DOCKER_USER%/microservices-nginx-user-service:latest
+                    docker push %DOCKER_USER%/microservices-nginx-product-service:latest
+                    docker push %DOCKER_USER%/microservices-nginx-order-service:latest
+                    '''
+                }
             }
         }
-        */
     }
 
     post {
@@ -60,7 +62,7 @@ pipeline {
             echo '✅ Deployment successful! All microservices are up and running.'
         }
         failure {
-            echo '❌ Deployment failed. Check Jenkins console output for details.'
+            echo '❌ Deployment failed. Check logs for details.'
         }
     }
 }
