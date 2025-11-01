@@ -2,14 +2,15 @@ pipeline {
     agent any
 
     environment {
-        REPO = 'Aryanuser07/microservices-nginx'
+        DOCKER_BUILDKIT = '1'
+        COMPOSE_DOCKER_CLI_BUILD = '1'
     }
 
     stages {
         stage('Checkout Code') {
             steps {
                 echo '📦 Pulling latest code...'
-                git branch: 'main', url: "https://github.com/${REPO}.git"
+                git branch: 'main', url: 'https://github.com/Aryanuser07/microservices-nginx.git'
             }
         }
 
@@ -26,7 +27,7 @@ pipeline {
                 bat '''
                 echo Stopping and removing existing containers if any...
                 docker-compose down --remove-orphans || exit 0
-                docker rm -f user-service order-service product-service 2>nul || exit 0
+                docker rm -f user-service order-service product-service nginx-reverse-proxy 2>nul || exit 0
                 '''
             }
         }
@@ -38,17 +39,24 @@ pipeline {
             }
         }
 
+        // Optional: Add this stage later after verifying successful deploy
+        /*
         stage('Verify Services') {
             steps {
-                echo '🔍 Verifying running containers...'
-                bat 'docker ps'
+                echo '🔍 Checking service health...'
+                bat '''
+                curl -s http://localhost/users
+                curl -s http://localhost/products
+                curl -s http://localhost/orders
+                '''
             }
         }
+        */
     }
 
     post {
         success {
-            echo '✅ Deployment successful! All microservices are running and accessible via Nginx.'
+            echo '✅ Deployment successful! All microservices are up and running.'
         }
         failure {
             echo '❌ Deployment failed. Check Jenkins console output for details.'
