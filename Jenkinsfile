@@ -2,8 +2,8 @@ pipeline {
     agent any
 
     environment {
-        DOCKER_USER = 'aryan0763'
-        DOCKER_PASS = credentials('dockerhub-creds')   // ✅ Fixed ID
+        DOCKER_USER = 'aryan0763'  // your real username
+        // password is securely stored in Jenkins Credentials
     }
 
     stages {
