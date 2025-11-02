@@ -1,0 +1,22 @@
+# Ignore Python cache files
+__pycache__/
+*.pyc
+
+# Ignore Docker-related stuff
+*.log
+*.env
+.env
+*.pid
+
+# Ignore local build data
+*.db
+*.sqlite3
+*.sqlite
+
+# Ignore VSCode and system files
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Ignore Jenkins workspace files
+workspace/
